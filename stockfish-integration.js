@@ -22,33 +22,53 @@ function initStockfishInBackground() {
     
     // Load Stockfish.js (pure JavaScript version)
     const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.min.js';
+    // Using a different CDN that properly exposes the Stockfish object
+    script.src = 'https://unpkg.com/stockfish@10.0.0/src/stockfish.js';
     script.async = true;
     
     script.onload = function() {
       console.log("Stockfish script loaded successfully");
       stockfishLoaded = true;
       
-      // Initialize Stockfish engine
-      stockfish = STOCKFISH();
-      
-      // Setup message handler
-      stockfish.onmessage = function(msg) {
-        console.log('Stockfish:', msg);
-        
-        // Check if engine is ready
-        if (msg === 'readyok') {
-          stockfishReady = true;
-          console.log('Stockfish engine ready');
+      // Wait a moment to ensure the Stockfish object is available
+      setTimeout(() => {
+        try {
+          // Initialize Stockfish engine differently based on how it's exposed
+          if (typeof Stockfish !== 'undefined') {
+            console.log("Using Stockfish constructor");
+            stockfish = new Stockfish();
+          } else if (typeof STOCKFISH !== 'undefined') {
+            console.log("Using STOCKFISH function");
+            stockfish = STOCKFISH();
+          } else if (window.Stockfish) {
+            console.log("Using window.Stockfish");
+            stockfish = new window.Stockfish();
+          } else {
+            console.error("Couldn't find Stockfish constructor or function");
+            return;
+          }
+          
+          // Setup message handler
+          stockfish.onmessage = function(msg) {
+            console.log('Stockfish:', msg);
+            
+            // Check if engine is ready
+            if (msg === 'readyok') {
+              stockfishReady = true;
+              console.log('Stockfish engine ready');
+            }
+          };
+          
+          // Initialize the engine
+          stockfish.postMessage('uci');
+          stockfish.postMessage('isready');
+          stockfish.postMessage('setoption name Skill Level value 10');
+          
+          console.log("Stockfish engine initialized and waiting for future use");
+        } catch (err) {
+          console.error("Error initializing Stockfish engine:", err);
         }
-      };
-      
-      // Initialize the engine
-      stockfish.postMessage('uci');
-      stockfish.postMessage('isready');
-      stockfish.postMessage('setoption name Skill Level value 10');
-      
-      console.log("Stockfish engine initialized and waiting for future use");
+      }, 100);
     };
     
     script.onerror = function() {
